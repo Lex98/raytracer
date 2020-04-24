@@ -1,0 +1,12 @@
+[package]
+name = "raytracer_derive"
+version = "0.1.0"
+authors = ["akorenskiy <akorenskiy@nic.ru>"]
+edition = "2018"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+quote = "*"
+syn = "*"

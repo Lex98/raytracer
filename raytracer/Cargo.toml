@@ -1,0 +1,9 @@
+[package]
+name = "raytracer"
+version = "0.1.0"
+authors = ["akorenskiy <akorenskiy@nic.ru>"]
+edition = "2018"
+
+[dependencies]
+raytracer_derive = { path = "../raytracer_derive" }
+indicatif = "*"
