@@ -11,11 +11,14 @@ fn main() -> io::Result<()> {
 
     for i in (0..image_height).rev().progress() {
         for j in 0..image_width {
-            let color = Color([
-                i as f64 / image_height as f64, 
-                j as f64 / image_width as f64,
-                0.2
-            ].into());
+            let color = Color(
+                [
+                    i as f64 / image_height as f64,
+                    j as f64 / image_width as f64,
+                    0.2,
+                ]
+                .into(),
+            );
 
             color.write(&mut io::stdout())?;
         }
