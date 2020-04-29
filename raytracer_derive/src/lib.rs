@@ -16,114 +16,152 @@ fn base3_ops_impl(tokens: TokenStream) -> TokenStream {
 
     // Generate the `impl`
     let gen = quote! {
-        impl std::ops::Add for &#name {
-            type Output = #name;
+        impl<T: ops::Add<T, Output = T> + Copy> std::ops::Add for &#name<T> {
+            type Output = #name<T>;
 
-            fn add(self, other: &#name) -> Self::Output {
+            fn add(self, other: &#name<T>) -> Self::Output {
                 #name(&self.0 + &other.0)
             }
         }
 
-        impl<'a> std::ops::AddAssign<&'a #name> for #name {
-            fn add_assign(&mut self, other: &'a #name) {
+        impl<T: ops::Add<T, Output = T> + Copy> std::ops::Add for #name<T> {
+            type Output = #name<T>;
+
+            fn add(self, other: #name<T>) -> Self::Output {
+                #name(&self.0 + &other.0)
+            }
+        }
+
+        impl<'a, T: ops::AddAssign<T> + Copy> std::ops::AddAssign<&'a #name<T>> for #name<T> {
+            fn add_assign(&mut self, other: &'a #name<T>) {
                 self.0 += &other.0;
             }
         }
 
-        impl std::ops::Div<f64> for &#name {
-            type Output = #name;
+        impl<T: ops::Div<T, Output = T> + Copy> std::ops::Div<T> for &#name<T> {
+            type Output = #name<T>;
 
-            fn div(self, divider: f64) -> Self::Output {
+            fn div(self, divider: T) -> Self::Output {
                 #name(&self.0 / divider)
             }
         }
 
-        impl std::ops::DivAssign<f64> for #name {
-            fn div_assign(&mut self, divider: f64) {
+        impl<T: ops::Div<T, Output = T> + Copy> std::ops::Div<T> for #name<T> {
+            type Output = #name<T>;
+
+            fn div(self, divider: T) -> Self::Output {
+                #name(&self.0 / divider)
+            }
+        }
+
+        impl<T: ops::DivAssign<T> + Copy> std::ops::DivAssign<T> for #name<T> {
+            fn div_assign(&mut self, divider: T) {
                 self.0 /= divider;
             }
         }
 
-        impl std::ops::Index<usize> for #name {
-            type Output = f64;
+        impl<T> std::ops::Index<usize> for #name<T> {
+            type Output = T;
 
             fn index(&self, index: usize) -> &Self::Output {
                 &self.0[index]
             }
         }
 
-        impl std::ops::IndexMut<usize> for #name {
+        impl<T> std::ops::IndexMut<usize> for #name<T> {
             fn index_mut(&mut self, index: usize) -> &mut Self::Output {
                 &mut self.0[index]
             }
         }
 
-        impl std::ops::Mul<f64> for &#name {
-            type Output = #name;
+        impl<T: ops::Mul<T, Output = T> + Copy> std::ops::Mul<T> for &#name<T> {
+            type Output = #name<T>;
 
-            fn mul(self, multiplier: f64) -> Self::Output {
+            fn mul(self, multiplier: T) -> Self::Output {
                 #name(&self.0 * multiplier)
             }
         }
 
-        impl std::ops::MulAssign<f64> for #name {
-            fn mul_assign(&mut self, multiplier: f64) {
+        impl<T: ops::Mul<T, Output = T> + Copy> std::ops::Mul<T> for #name<T> {
+            type Output = #name<T>;
+
+            fn mul(self, multiplier: T) -> Self::Output {
+                #name(&self.0 * multiplier)
+            }
+        }
+
+        impl<T: ops::MulAssign<T> + Copy> std::ops::MulAssign<T> for #name<T> {
+            fn mul_assign(&mut self, multiplier: T) {
                 self.0 *= multiplier;
             }
         }
 
-        impl<'a> std::ops::Neg for &'a #name {
-            type Output = #name;
+        impl<'a, T: ops::Neg<Output = T> + Copy> std::ops::Neg for &'a #name<T> {
+            type Output = #name<T>;
             fn neg(self) -> Self::Output {
                 #name(-&self.0)
             }
         }
 
-        impl std::ops::Sub for &#name {
-            type Output = #name;
+        impl<'a, T: ops::Neg<Output = T> + Copy> std::ops::Neg for #name<T> {
+            type Output = #name<T>;
+            fn neg(self) -> Self::Output {
+                #name(-&self.0)
+            }
+        }
 
-            fn sub(self, other: &#name) -> Self::Output {
+        impl<T: ops::Sub<T, Output = T> + Copy> std::ops::Sub for &#name<T> {
+            type Output = #name<T>;
+
+            fn sub(self, other: &#name<T>) -> Self::Output {
                 #name(&self.0 - &other.0)
             }
         }
 
-        impl<'a> std::ops::SubAssign<&'a #name> for #name {
-            fn sub_assign(&mut self, other: &'a #name) {
+        impl<T: ops::Sub<T, Output = T> + Copy> std::ops::Sub for #name<T> {
+            type Output = #name<T>;
+
+            fn sub(self, other: #name<T>) -> Self::Output {
+                #name(&self.0 - &other.0)
+            }
+        }
+
+        impl<'a, T: ops::SubAssign<T> + Copy> std::ops::SubAssign<&'a #name<T>> for #name<T> {
+            fn sub_assign(&mut self, other: &'a #name<T>) {
                 self.0 -= &other.0;
             }
         }
 
-        impl<'a> IntoIterator for &'a #name {
-            type Item = &'a f64;
-            type IntoIter = Iter<'a, f64>;
+        impl<'a, T> IntoIterator for &'a #name<T> {
+            type Item = &'a T;
+            type IntoIter = Iter<'a, T>;
 
             fn into_iter(self) -> Self::IntoIter {
                 self.0.iter()
             }
         }
 
-        impl<'a> IntoIterator for &'a mut #name {
-            type Item = &'a mut f64;
-            type IntoIter = IterMut<'a, f64>;
+        impl<'a, T> IntoIterator for &'a mut #name<T> {
+            type Item = &'a mut T;
+            type IntoIter = IterMut<'a, T>;
 
             fn into_iter(self) -> Self::IntoIter {
                 self.0.iter_mut()
             }
         }
 
-        impl<'a>  #name {
-            pub fn iter(&'a self) -> Iter<'a, f64> {
+        impl<'a, T>  #name<T> {
+            pub fn iter(&'a self) -> Iter<'a, T> {
                 self.into_iter()
             }
 
-            pub fn iter_mut(&'a mut self) -> IterMut<'a, f64> {
+            pub fn iter_mut(&'a mut self) -> IterMut<'a, T> {
                 self.into_iter()
             }
-
         }
 
-        impl std::convert::From<[f64; 3]> for #name {
-            fn from(base :[f64; 3]) -> #name {
+        impl<T> std::convert::From<[T; 3]> for #name<T> {
+            fn from(base :[T; 3]) -> #name<T> {
                 #name(base.into())
             }
         }

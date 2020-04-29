@@ -1,27 +1,31 @@
+use image::RgbImage;
 use indicatif::ProgressIterator;
-use std::io;
 
 use raytracer::*;
 
-fn main() -> io::Result<()> {
-    let image_height = 100;
+fn main() {
     let image_width = 200;
+    let image_height = 100;
 
-    println!("P3\n{} {}\n255", image_width, image_height);
+    let mut img = RgbImage::new(image_width, image_height);
 
-    for i in (0..image_height).rev().progress() {
-        for j in 0..image_width {
-            let color = Color(
-                [
-                    i as f64 / image_height as f64,
-                    j as f64 / image_width as f64,
-                    0.2,
-                ]
-                .into(),
-            );
+    let lower_left_corner = Point3([-2., -1., -1.].into());
+    let horizontal = Vec3([4., 0., 0.].into());
+    let vertical = Vec3([0., 2., 0.].into());
 
-            color.write(&mut io::stdout())?;
+    for j in (0..image_height).progress() {
+        for i in 0..image_width {
+            let u = i as f64 / image_width as f64;
+            let v = j as f64 / image_height as f64;
+
+            let ray = Ray {
+                origin: Point3::default(),
+                direction: (&lower_left_corner + &(&horizontal * u + &vertical * v))
+                    .vec_from(&Point3::default()),
+            };
+            let color = ray_color(&ray);
+            img.put_pixel(i, j, color.into())
         }
     }
-    Ok(())
+    img.save("image.png").unwrap();
 }
