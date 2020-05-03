@@ -1,9 +1,10 @@
 use image::Rgb;
 use num_traits::Float;
 use raytracer_derive::Base3Ops;
-use std::io;
+use std::f64::INFINITY;
 use std::iter::IntoIterator;
 use std::ops;
+use std::ops::{Add, Mul, Sub, Div};
 use std::slice::{Iter, IterMut};
 
 #[derive(Debug, Default)]
@@ -22,6 +23,30 @@ pub struct Vec3<T>(pub Base3<T>);
 pub struct Ray<T> {
     pub origin: Point3<T>,
     pub direction: Vec3<T>,
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct HitRecord<T> {
+    pub point: Point3<T>,
+    pub normal: Vec3<T>,
+    pub t: T,
+    pub front_face: bool,
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct Sphere<T> {
+    pub center: Point3<T>,
+    pub radius: T,
+}
+
+#[derive(Debug, Clone)]
+pub enum Hittable<T> {
+    Sphere(Sphere<T>),
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct HittableVec<T> {
+    pub objects: Vec<Hittable<T>>,
 }
 
 impl<T> From<[T; 3]> for Base3<T> {
@@ -243,40 +268,21 @@ impl<T: std::iter::Sum + Float> Length<T> for Vec3<T> {
     }
 }
 
-pub trait Write {
-    fn write<T: io::Write>(&self, writer: &mut T) -> io::Result<()>;
-}
-
-impl<W> Write for Color<W>
-where
-    W: Copy + Into<f64>,
-{
-    fn write<T: io::Write>(&self, writer: &mut T) -> io::Result<()> {
-        writer.write_fmt(format_args!(
-            "{} {} {}\n",
-            (self[0].into() * 255.999) as i32,
-            (self[1].into() * 255.999) as i32,
-            (self[2].into() * 255.999) as i32,
-        ))
-    }
-}
-
 pub trait Vec3Operations<T> {
-    fn dot<'a, 'b: 'a>(&'a self, other: &'b Self) -> <<<<&'a Self as XYZ>::Item as std::ops::Mul<<&'a Self as XYZ>::Item>>::Output as std::ops::Add<<<&Self as XYZ>::Item as std::ops::Mul<<&'a Self as XYZ>::Item>>::Output>>::Output as std::ops::Add<<<&'a Self as XYZ>::Item as std::ops::Mul>::Output>>::Output
+    fn dot<'a, 'b: 'a>(&'a self, other: &'b Self) -> <<<<&'a Self as XYZ>::Item as Mul<<&'a Self as XYZ>::Item>>::Output as Add<<<&Self as XYZ>::Item as Mul<<&'a Self as XYZ>::Item>>::Output>>::Output as Add<<<&'a Self as XYZ>::Item as Mul>::Output>>::Output
     where &'a Self: XYZ,
-    <&'a Self as XYZ>::Item: ops::Mul<<&'a Self as XYZ>::Item>,
-    <<&'a Self as XYZ>::Item as std::ops::Mul<<&'a Self as XYZ>::Item>>::Output: ops::Add<<<&'a Self as XYZ>::Item as std::ops::Mul<<&'a Self as XYZ>::Item>>::Output>,
-    <<<&'a Self as XYZ>::Item as std::ops::Mul<<&'a Self as XYZ>::Item>>::Output as std::ops::Add<<<&'a Self as XYZ>::Item as std::ops::Mul>::Output>>::Output: ops::Add<<<&'a Self as XYZ>::Item as std::ops::Mul<<&'a Self as XYZ>::Item>>::Output>
+    <&'a Self as XYZ>::Item: Mul<<&'a Self as XYZ>::Item>,
+    <<&'a Self as XYZ>::Item as Mul<<&'a Self as XYZ>::Item>>::Output: Add<<<&'a Self as XYZ>::Item as Mul<<&'a Self as XYZ>::Item>>::Output>,
+    <<<&'a Self as XYZ>::Item as Mul<<&'a Self as XYZ>::Item>>::Output as Add<<<&'a Self as XYZ>::Item as Mul>::Output>>::Output: Add<<<&'a Self as XYZ>::Item as Mul<<&'a Self as XYZ>::Item>>::Output>
     {
         self.x() * other.x() + self.y() * other.y() + self.z() * other.z()
     }
 
     fn cross<'a, 'b: 'a>(&'a self, other: &'b Self) -> Self
-    where
-    Self: From<[<<<&'a Self as XYZ>::Item as std::ops::Mul<<&'a Self as XYZ>::Item>>::Output as std::ops::Sub<<<&'a Self as XYZ>::Item as std::ops::Mul>::Output>>::Output; 3]>,
-    &'a Self: XYZ,
-    <&'a Self as XYZ>::Item: ops::Mul<<&'a Self as XYZ>::Item>,
-    <<&'a Self as XYZ>::Item as std::ops::Mul<<&'a Self as XYZ>::Item>>::Output: ops::Sub<<<&'a Self as XYZ>::Item as std::ops::Mul<<&'a Self as XYZ>::Item>>::Output>
+    where &'a Self: XYZ,
+    Self: From<[<<<&'a Self as XYZ>::Item as Mul<<&'a Self as XYZ>::Item>>::Output as Sub<<<&'a Self as XYZ>::Item as Mul>::Output>>::Output; 3]>,
+    <&'a Self as XYZ>::Item: Mul<<&'a Self as XYZ>::Item>,
+    <<&'a Self as XYZ>::Item as Mul<<&'a Self as XYZ>::Item>>::Output: Sub<<<&'a Self as XYZ>::Item as Mul<<&'a Self as XYZ>::Item>>::Output>
     {
         [
             self.y() * other.z() - self.z() * other.y(),
@@ -286,11 +292,11 @@ pub trait Vec3Operations<T> {
         .into()
     }
 
-    fn unit_vector<'a>(&'a self) -> <&'a Self as std::ops::Div<T>>::Output
+    fn unit_vector<'a>(&'a self) -> <&'a Self as Div<T>>::Output
     where
         T: Float,
         Self: Length<T>,
-        &'a Self: ops::Div<T>,
+        &'a Self: Div<T>,
     {
         self / self.length()
     }
@@ -396,37 +402,105 @@ impl<T: Into<f64> + Copy> From<Color<T>> for Rgb<u8> {
     }
 }
 
-pub fn ray_color(ray: &Ray<f64>) -> Color<f64> {
-    let t = hit_sphere(&Point3([0.0, 0.0, 1.0].into()), 0.5, ray);
-    match t {
-        Some(t) => {
-            let n = (ray.at(t) - Point3([0.0, 0.0, 1.0].into()))
-                .vec_from(&Point3::default())
-                .unit_vector();
-            Color([n.x() + 1.0, n.y() + 1.0, n.z() + 1.0].into()) * 0.5
-        }
+pub fn ray_color<T: Hit<f64>>(ray: &Ray<f64>, world: T) -> Color<f64> {
+    match world.hit(&ray, 0.0, INFINITY) {
+        Some(rec) => (rec.normal + Vec3([1.0, 1.0, 1.0].into())).as_color() * 0.5,
         None => {
             let t = 0.5 * (ray.direction.unit_vector().y() + 1.0);
-            Color([0.5, 0.7, 1.0].into()) * (1.0 - t) + Color([1.0, 1.0, 1.0].into()) * t
+            Color([1.0, 1.0, 1.0].into()) * (1.0 - t) + Color([0.5, 0.7, 1.0].into()) * t
         }
     }
 }
 
 impl<T: Float> Point3<T> {
     pub fn vec_from(&self, origin: &Point3<T>) -> Vec3<T> {
-        Vec3(((self - origin).0).0.into())
+        Vec3((self - origin).0)
     }
 }
 
-pub fn hit_sphere(center: &Point3<f64>, radius: f64, ray: &Ray<f64>) -> Option<f64> {
-    let oc = ray.origin.vec_from(center);
-    let a = ray.direction.length_squared();
-    let half_b = oc.dot(&ray.direction);
-    let c = oc.length_squared() - radius * radius;
-    let discriminant = half_b * half_b - a * c;
-    if discriminant < 0.0 {
+pub trait Hit<T> {
+    fn hit(self, ray: &Ray<T>, t_min: T, t_max: T) -> Option<HitRecord<T>>;
+}
+
+impl HitRecord<f64> {
+    fn new(point: Point3<f64>, t: f64, ray: &Ray<f64>, outward_normal: Vec3<f64>) -> Self {
+        let front_face = ray.direction.dot(&outward_normal) < 0.0;
+        let normal = if front_face {
+            outward_normal
+        } else {
+            -outward_normal
+        };
+
+        Self {
+            point,
+            normal,
+            t,
+            front_face,
+        }
+    }
+}
+
+impl Hit<f64> for &Sphere<f64> {
+    fn hit(self, ray: &Ray<f64>, t_min: f64, t_max: f64) -> Option<HitRecord<f64>> {
+        let oc = ray.origin.vec_from(&self.center);
+        let a = ray.direction.length_squared();
+        let half_b = oc.dot(&ray.direction);
+        let c = oc.length_squared() - self.radius * self.radius;
+        let discriminant = half_b * half_b - a * c;
+        if discriminant > 0.0 {
+            let root = discriminant.sqrt();
+            let temp = (-half_b - root) / a;
+            let temp = if temp < t_min || temp > t_max {
+                (-half_b + root) / a
+            } else {
+                temp
+            };
+            if temp < t_min || temp > t_max {
+                return None
+            }
+            let hit_point = ray.at(temp);
+            let outward_normal = (&hit_point.vec_from(&self.center)) / self.radius;
+            return Some(HitRecord::new(hit_point, temp, ray, outward_normal));
+        }
         None
-    } else {
-        Some((-half_b - discriminant.sqrt()) / a)
+    }
+}
+
+impl Hit<f64> for &Hittable<f64> {
+    fn hit(self, ray: &Ray<f64>, t_min: f64, t_max: f64) -> Option<HitRecord<f64>> {
+        match self {
+            Hittable::Sphere(sphere) => sphere.hit(ray, t_min, t_max),
+        }
+    }
+}
+
+impl Hit<f64> for &HittableVec<f64> {
+    fn hit(self, ray: &Ray<f64>, t_min: f64, t_max: f64) -> Option<HitRecord<f64>> {
+        let mut temp_rec = None;
+        let mut closest_so_far = t_max;
+
+        for object in self.objects.iter() {
+            if let Some(rec) = object.hit(ray, t_min, closest_so_far) {
+                closest_so_far = rec.t;
+                temp_rec = Some(rec);
+            }
+        }
+        temp_rec
+    }
+}
+
+pub trait AsColor<T> {
+    fn as_color(self) -> Color<T>;
+}
+
+impl<T> AsColor<T> for Vec3<T> {
+    fn as_color(self) -> Color<T> {
+        Color(self.0)
+    }
+}
+
+impl<T> HittableVec<T> {
+    pub fn push(&mut self, value: Hittable<T>) {
+        self.objects.push(value)
     }
 }
