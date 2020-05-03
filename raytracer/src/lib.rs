@@ -49,6 +49,14 @@ pub struct HittableVec<T> {
     pub objects: Vec<Hittable<T>>,
 }
 
+#[derive(Debug, Clone)]
+pub struct Camera<T> {
+    pub upper_left_corner: Point3<T>,
+    pub horizontal: Vec3<T>,
+    pub vertical: Vec3<T>,
+    pub origin : Point3<T>,
+}
+
 impl<T> From<[T; 3]> for Base3<T> {
     fn from(base: [T; 3]) -> Base3<T> {
         Base3(base)
@@ -402,6 +410,20 @@ impl<T: Into<f64> + Copy> From<Color<T>> for Rgb<u8> {
     }
 }
 
+impl<T: Float + Into<f64>> Color<T> {
+    pub fn as_rgb(&self, samples_per_pixel: i32) -> Rgb<u8> {
+        let scale = 1.0 / samples_per_pixel as f64;
+        let r = scale * (*self.r()).into();
+        let g = scale * (*self.g()).into();
+        let b = scale * (*self.b()).into();
+        Rgb([
+            (clamp(r, 0.0, 0.999) * 256.0) as u8,
+            (clamp(g, 0.0, 0.999) * 256.0) as u8,
+            (clamp(b, 0.0, 0.999) * 256.0) as u8,
+        ])
+    }
+}
+
 pub fn ray_color<T: Hit<f64>>(ray: &Ray<f64>, world: T) -> Color<f64> {
     match world.hit(&ray, 0.0, INFINITY) {
         Some(rec) => (rec.normal + Vec3([1.0, 1.0, 1.0].into())).as_color() * 0.5,
@@ -503,4 +525,31 @@ impl<T> HittableVec<T> {
     pub fn push(&mut self, value: Hittable<T>) {
         self.objects.push(value)
     }
+}
+
+impl Default for Camera<f64> {
+    fn default() -> Self {
+        Camera {
+            upper_left_corner: Point3([-2.0, 1.0, 1.0].into()),
+            horizontal: Vec3([4.0, 0.0, 0.0].into()),
+            vertical: Vec3([0.0, -2.0, 0.0].into()),
+            origin : Point3::default()
+        }
+    }
+}
+
+impl Camera<f64> {
+    pub fn get_ray(&self, u: f64, v: f64) -> Ray<f64> {
+        Ray {
+            origin: self.origin.clone(),
+            direction: (&self.upper_left_corner + &(&self.horizontal * u + &self.vertical * v))
+                .vec_from(&self.origin),
+        }
+    }
+}
+
+pub fn clamp<T: PartialOrd>(x: T, min: T, max: T) -> T {
+    if x < min {return min};
+    if x > max {return max};
+    x
 }

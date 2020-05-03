@@ -9,3 +9,4 @@ raytracer_derive = { path = "../raytracer_derive" }
 indicatif = "*"
 num-traits = "*"
 image = "*"
+rand = "*"
