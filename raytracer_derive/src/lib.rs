@@ -165,6 +165,12 @@ fn base3_ops_impl(tokens: TokenStream) -> TokenStream {
                 #name(base.into())
             }
         }
+
+        impl<T: SampleUniform + Copy> #name<T> {
+            pub fn random(min: T, max: T) -> Self {
+                #name(Base3::random(min, max).into())
+            }
+        }
     };
     gen.into()
 }

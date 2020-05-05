@@ -1,11 +1,14 @@
 use image::Rgb;
 use num_traits::Float;
-use raytracer_derive::Base3Ops;
+use rand::prelude::*;
+use rand::distributions::uniform::SampleUniform;
 use std::f64::INFINITY;
 use std::iter::IntoIterator;
-use std::ops;
 use std::ops::{Add, Mul, Sub, Div};
+use std::ops;
 use std::slice::{Iter, IterMut};
+
+use raytracer_derive::Base3Ops;
 
 #[derive(Debug, Default)]
 pub struct Base3<T>(pub [T; 3]);
@@ -263,6 +266,17 @@ impl<'a, T> Base3<T> {
     }
 }
 
+impl<T: SampleUniform + Copy> Base3<T> {
+    pub fn random(min: T, max: T) -> Self {
+        let mut rng = thread_rng();
+        Base3([
+            rng.gen_range(min, max),
+            rng.gen_range(min, max),
+            rng.gen_range(min, max),
+        ])
+    }
+}
+
 pub trait Length<T: Float> {
     fn length(&self) -> T {
         self.length_squared().sqrt()
@@ -384,6 +398,14 @@ impl<T: ops::Add<T, Output = T> + Copy> ops::Add<&Vec3<T>> for &Point3<T> {
     }
 }
 
+impl<T: ops::Add<T, Output = T> + Copy> ops::Add<Vec3<T>> for Point3<T> {
+    type Output = Point3<T>;
+
+    fn add(self, other: Vec3<T>) -> Self::Output {
+        [self[0] + other[0], self[1] + other[1], self[2] + other[2]].into()
+    }
+}
+
 pub trait RayTrait<T> {
     fn at(self, t: T) -> Point3<T>;
     fn color(self) -> Color<T>;
@@ -400,22 +422,22 @@ impl RayTrait<f64> for &Ray<f64> {
     }
 }
 
-impl<T: Into<f64> + Copy> From<Color<T>> for Rgb<u8> {
-    fn from(color: Color<T>) -> Rgb<u8> {
-        Rgb([
-            (color[0].into() * 255.999) as u8,
-            (color[1].into() * 255.999) as u8,
-            (color[2].into() * 255.999) as u8,
-        ])
-    }
-}
+// impl<T: Into<f64> + Copy + Float> From<Color<T>> for Rgb<u8> {
+//     fn from(color: Color<T>) -> Rgb<u8> {
+//         Rgb([
+//             (clamp((*color.r()).into(), 0.0, 0.999) * 256.0) as u8,
+//             (clamp((*color.g()).into(), 0.0, 0.999) * 256.0) as u8,
+//             (clamp((*color.b()).into(), 0.0, 0.999) * 256.0) as u8,
+//         ])
+//     }
+// }
 
 impl<T: Float + Into<f64>> Color<T> {
     pub fn as_rgb(&self, samples_per_pixel: i32) -> Rgb<u8> {
         let scale = 1.0 / samples_per_pixel as f64;
-        let r = scale * (*self.r()).into();
-        let g = scale * (*self.g()).into();
-        let b = scale * (*self.b()).into();
+        let r = (scale * (*self.r()).into()).sqrt();
+        let g = (scale * (*self.g()).into()).sqrt();
+        let b = (scale * (*self.b()).into()).sqrt();
         Rgb([
             (clamp(r, 0.0, 0.999) * 256.0) as u8,
             (clamp(g, 0.0, 0.999) * 256.0) as u8,
@@ -424,9 +446,23 @@ impl<T: Float + Into<f64>> Color<T> {
     }
 }
 
-pub fn ray_color<T: Hit<f64>>(ray: &Ray<f64>, world: T) -> Color<f64> {
-    match world.hit(&ray, 0.0, INFINITY) {
-        Some(rec) => (rec.normal + Vec3([1.0, 1.0, 1.0].into())).as_color() * 0.5,
+pub fn ray_color<'a, T>(ray: &Ray<f64>, world: &'a T, depth: u8) -> Color<f64>
+where &'a T: Hit<f64> {
+    if depth == 0 {
+        return Color([0.0, 0.0, 0.0].into());
+    }
+
+    match world.hit(&ray, 0.0001, INFINITY) {
+        Some(rec) => {
+            let target = &rec.point + &rec.normal + Vec3::random_in_unit_sphere();
+            ray_color(
+                &Ray {
+                origin: rec.point.clone(),
+                direction: target.vec_from(&rec.point),
+            }, 
+            &world,
+            depth - 1) * 0.5
+        },
         None => {
             let t = 0.5 * (ray.direction.unit_vector().y() + 1.0);
             Color([1.0, 1.0, 1.0].into()) * (1.0 - t) + Color([0.5, 0.7, 1.0].into()) * t
@@ -552,4 +588,17 @@ pub fn clamp<T: PartialOrd>(x: T, min: T, max: T) -> T {
     if x < min {return min};
     if x > max {return max};
     x
+}
+
+impl Vec3<f64> {
+    pub fn random_in_unit_sphere() -> Vec3<f64> {
+        loop {
+            let vec = Vec3::random(-1.0, 1.0);
+            if vec.length_squared() >= 1.0 {
+                continue;
+            } else {
+                return vec;
+            }
+        }
+    }
 }
