@@ -18,7 +18,7 @@ impl Ray<f64> {
     }
 }
 
-pub fn ray_color<'a, T>(ray: &Ray<f64>, world: &'a T, depth: u8) -> Color<f64>
+pub fn ray_color<'a, T>(ray: &Ray<f64>, world: &'a T, depth: u16) -> Color<f64>
 where
     &'a T: Hit<f64>,
 {
@@ -29,7 +29,7 @@ where
     match world.hit(&ray, 0.0001, INFINITY) {
         Some(rec) => match rec.material.scatter(ray, &rec) {
             Some((scattered, attenuation)) => {
-                attenuation * ray_color(&scattered, &world, depth - 1) * 0.5
+                attenuation * ray_color(&scattered, &world, depth - 1)
             }
             None => Color([0.0, 0.0, 0.0].into()),
         },

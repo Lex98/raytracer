@@ -1,4 +1,4 @@
-use core::f64::consts::PI;
+use std::f64::consts::PI;
 use num_traits::Float;
 use rand::distributions::uniform::SampleUniform;
 use rand::prelude::*;
@@ -76,6 +76,13 @@ impl Vec3<f64> {
 
     pub fn reflect(&self, normal: &Vec3<f64>) -> Vec3<f64> {
         self - &(normal * self.dot(normal) * 2.0)
+    }
+
+    pub fn refract(&self, normal: &Vec3<f64>, etai_over_etat: f64) -> Vec3<f64> {
+        let cos_theta = (-self).dot(normal);
+        let r_out_parallel = (self + &(normal * cos_theta)) * etai_over_etat;
+        let r_out_perp = -normal * (1.0 - r_out_parallel.length_squared()).sqrt();
+        r_out_parallel + r_out_perp
     }
 }
 

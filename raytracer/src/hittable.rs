@@ -64,8 +64,8 @@ impl Hit<f64> for &Sphere<f64> {
         let oc = ray.origin.vec_from(&self.center);
         let a = ray.direction.length_squared();
         let half_b = oc.dot(&ray.direction);
-        let c = oc.length_squared() - self.radius * self.radius;
-        let discriminant = half_b * half_b - a * c;
+        let c = oc.length_squared() - self.radius.powi(2);
+        let discriminant = half_b.powi(2) - a * c;
         if discriminant > 0.0 {
             let root = discriminant.sqrt();
             let temp = (-half_b - root) / a;
