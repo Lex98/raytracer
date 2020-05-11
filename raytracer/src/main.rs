@@ -10,54 +10,32 @@ fn main() {
     let aspect_ratio = 16.0 / 9.0;
     let image_width = 1920;
     let image_height = (image_width as f64 / aspect_ratio) as u32;
-    let samples_per_pixel = 100;
-    let max_depth = 50u16;
+    let samples_per_pixel = 1000;
+    let max_depth = 50;
     let pool = ThreadPoolBuilder::new()
         .num_threads(num_cpus::get())
         .build()
         .unwrap();
 
+    let look_from = Point3([13.0, 2.0, -3.0].into());
+    let look_at = Point3([0.0, 0.0, 0.0].into());
+    let up = Vec3([0.0, 1.0, 0.0].into());
+    let vertical_fov = 20.0;
+    let aperture = 0.1;
+    let dist_to_focus = 10.0;
+
     let mut img = RgbImage::new(image_width, image_height);
-    let mut world = HittableVec {
-        objects: Vec::new(),
-    };
-    let mut spheres = HittableVec {
-        objects: Vec::new(),
-    };
-    spheres.push(Hittable::Sphere(Sphere {
-        center: Point3([0.0, -100.5, 1.0].into()),
-        radius: 100.0,
-        material: Materials::Lambertian(Lambertian {
-            albedo: Color([0.8, 0.8, 0.0].into()),
-        }),
-    }));
+    let world = random_scene();
 
-    spheres.push(Hittable::Sphere(Sphere {
-        center: Point3([0.0, 0.0, 1.0].into()),
-        radius: 0.5,
-        material: Materials::Lambertian(Lambertian {
-            albedo: Color([0.7, 0.3, 0.3].into())
-        }),
-    }));
-    spheres.push(Hittable::Sphere(Sphere {
-        center: Point3([-1.0, 0.0, 1.0].into()),
-        radius: 0.5,
-        material: Materials::Dielectric(Dielectric {
-            ref_idx: 1.5,
-        }),
-    }));
-    spheres.push(Hittable::Sphere(Sphere {
-        center: Point3([1.0, 0.0, 1.0].into()),
-        radius: 0.5,
-        material: Materials::Metal(Metal {
-            albedo: Color([0.8, 0.6, 0.2].into()),
-            fuzz: 0.1,
-        }),
-    }));
-
-    world.push(Hittable::HittableVec(spheres));
-
-    let cam = Camera::default();
+    let cam = Camera::new(
+        look_from,
+        look_at,
+        up,
+        vertical_fov,
+        aspect_ratio,
+        aperture,
+        dist_to_focus,
+    );
     let rows = img.rows_mut().collect::<Vec<_>>();
     let progress_bar = ProgressBar::new(rows.len() as u64);
     let pb_style = ProgressStyle::default_bar()
@@ -84,8 +62,89 @@ fn main() {
                 }
                 progress_bar_ref.inc(1);
             });
-        };
+        }
     });
 
     img.save("image.png").unwrap();
+}
+
+fn random_scene() -> HittableVec<f64> {
+    let mut world = HittableVec {
+        objects: Vec::new(),
+    };
+    let mut spheres = HittableVec {
+        objects: Vec::new(),
+    };
+    spheres.push(Hittable::Sphere(Sphere {
+        center: Point3([0.0, -1000.0, 0.0].into()),
+        radius: 1000.0,
+        material: Materials::Lambertian(Lambertian {
+            albedo: Color([0.5, 0.5, 0.5].into()),
+        }),
+    }));
+
+    spheres.push(Hittable::Sphere(Sphere {
+        center: Point3([0.0, 1.0, 0.0].into()),
+        radius: 1.0,
+        material: Materials::Dielectric(Dielectric { ref_idx: 1.5 }),
+    }));
+    spheres.push(Hittable::Sphere(Sphere {
+        center: Point3([-4.0, 1.0, 0.0].into()),
+        radius: 1.0,
+        material: Materials::Lambertian(Lambertian {
+            albedo: Color([0.4, 0.2, 0.1].into()),
+        }),
+    }));
+    spheres.push(Hittable::Sphere(Sphere {
+        center: Point3([4.0, 1.0, 0.0].into()),
+        radius: 1.0,
+        material: Materials::Metal(Metal {
+            albedo: Color([0.8, 0.6, 0.5].into()),
+            fuzz: 0.0,
+        }),
+    }));
+
+    let mut rng = thread_rng();
+    for a in -11..11 {
+        for b in -11..11 {
+            let choose_material = rng.gen_range(0.0, 1.0);
+            let center = Point3(
+                [
+                    a as f64 + 0.9 * rng.gen_range(0.0, 1.0),
+                    0.2,
+                    b as f64 + 0.9 * rng.gen_range(0.0, 1.0),
+                ]
+                .into(),
+            );
+            if choose_material < 0.8 {
+                //diffuse
+                let albedo = Color::random(0.0, 1.0);
+                spheres.push(Hittable::Sphere(Sphere {
+                    center,
+                    radius: 0.2,
+                    material: Materials::Lambertian(Lambertian { albedo }),
+                }));
+            } else if choose_material < 0.95 {
+                //metal
+                let albedo = Color::random(0.5, 1.0);
+                let fuzz = rng.gen_range(0.0, 0.5);
+                spheres.push(Hittable::Sphere(Sphere {
+                    center,
+                    radius: 0.2,
+                    material: Materials::Metal(Metal { albedo, fuzz }),
+                }));
+            } else {
+                //glass
+                spheres.push(Hittable::Sphere(Sphere {
+                    center,
+                    radius: 0.2,
+                    material: Materials::Dielectric(Dielectric { ref_idx: 1.5 }),
+                }));
+            }
+        }
+    }
+
+    world.push(Hittable::HittableVec(spheres));
+
+    world
 }

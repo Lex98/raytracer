@@ -27,6 +27,22 @@ impl<T: ops::Add<T, Output = T> + Copy> ops::Add<Vec3<T>> for Point3<T> {
     }
 }
 
+impl<T: ops::Sub<T, Output = T> + Copy> ops::Sub<&Vec3<T>> for &Point3<T> {
+    type Output = Point3<T>;
+
+    fn sub(self, other: &Vec3<T>) -> Self::Output {
+        [self[0] - other[0], self[1] - other[1], self[2] - other[2]].into()
+    }
+}
+
+impl<T: ops::Sub<T, Output = T> + Copy> ops::Sub<Vec3<T>> for Point3<T> {
+    type Output = Point3<T>;
+
+    fn sub(self, other: Vec3<T>) -> Self::Output {
+        [self[0] - other[0], self[1] - other[1], self[2] - other[2]].into()
+    }
+}
+
 impl<'a, T> XYZ for &'a Point3<T> {
     type Item = &'a T;
 

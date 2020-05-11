@@ -1,7 +1,7 @@
-use std::f64::consts::PI;
 use num_traits::Float;
 use rand::distributions::uniform::SampleUniform;
 use rand::prelude::*;
+use std::f64::consts::PI;
 use std::ops;
 use std::ops::{Add, Div, Mul, Sub};
 use std::slice::{Iter, IterMut};
@@ -53,7 +53,7 @@ pub trait Vec3Operations<T> {
         .into()
     }
 
-    fn unit_vector<'a>(&'a self) -> <&'a Self as Div<T>>::Output
+    fn unit<'a>(&'a self) -> <&'a Self as Div<T>>::Output
     where
         T: Float,
         Self: Length<T>,
@@ -70,7 +70,7 @@ impl Vec3<f64> {
         let mut rng = thread_rng();
         let a = rng.gen_range(0.0, 2.0 * PI);
         let z = rng.gen_range(-1.0, 1.0);
-        let r = (1.0 - z * z).sqrt();
+        let r = (1.0 - z.powi(2)).sqrt();
         Vec3([r * a.cos(), r * a.sin(), z].into())
     }
 

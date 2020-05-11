@@ -2,6 +2,7 @@ use rand::prelude::*;
 
 use crate::base::color::Color;
 use crate::base::vec3::{Vec3, Vec3Operations};
+use crate::base::XYZ;
 use crate::hittable::HitRecord;
 use crate::ray::Ray;
 
@@ -55,7 +56,7 @@ impl Scatter<f64> for Metal<f64> {
         ray_in: &Ray<f64>,
         hit_record: &HitRecord<f64>,
     ) -> Option<(Ray<f64>, Color<f64>)> {
-        let reflected = ray_in.direction.unit_vector().reflect(&hit_record.normal);
+        let reflected = ray_in.direction.unit().reflect(&hit_record.normal);
         let scattered = Ray {
             origin: hit_record.point.clone(),
             direction: reflected + Vec3::random_unit() * self.fuzz,
@@ -80,16 +81,17 @@ impl Scatter<f64> for Dielectric<f64> {
             self.ref_idx
         };
 
-        let unit_direction = ray_in.direction.unit_vector();
-        let cos_theta = (-&unit_direction).dot(&hit_record.normal).max(1.0);
+        let unit_direction = ray_in.direction.unit();
+        let cos_theta = (-&unit_direction).dot(&hit_record.normal).min(1.0);
         let sin_theta = (1.0 - cos_theta.powi(2)).sqrt();
         let mut rng = thread_rng();
-        let reflect_prob  = shlick(cos_theta, etai_over_etat);
-        let new_direction = if (etai_over_etat * sin_theta > 1.0) | (reflect_prob > rng.gen_range(0.0, 1.0)) {
-            unit_direction.reflect(&hit_record.normal)
-        } else {
-            unit_direction.refract(&hit_record.normal, etai_over_etat)
-        };
+        let reflect_prob = shlick(cos_theta, etai_over_etat);
+        let new_direction =
+            if (etai_over_etat * sin_theta > 1.0) | (reflect_prob > rng.gen_range(0.0, 1.0)) {
+                unit_direction.reflect(&hit_record.normal)
+            } else {
+                unit_direction.refract(&hit_record.normal, etai_over_etat)
+            };
 
         let scattered = Ray {
             origin: hit_record.point.clone(),

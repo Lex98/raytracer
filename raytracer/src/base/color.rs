@@ -35,16 +35,6 @@ impl<'a, T> RGB for &'a Color<T> {
     }
 }
 
-// impl<T: Into<f64> + Copy + Float> From<Color<T>> for Rgb<u8> {
-//     fn from(color: Color<T>) -> Rgb<u8> {
-//         Rgb([
-//             (clamp((*color.r()).into(), 0.0, 0.999) * 256.0) as u8,
-//             (clamp((*color.g()).into(), 0.0, 0.999) * 256.0) as u8,
-//             (clamp((*color.b()).into(), 0.0, 0.999) * 256.0) as u8,
-//         ])
-//     }
-// }
-
 impl<T: Float + Into<f64>> Color<T> {
     pub fn as_rgb(&self, samples_per_pixel: i32) -> Rgb<u8> {
         let scale = 1.0 / samples_per_pixel as f64;

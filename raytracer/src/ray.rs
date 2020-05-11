@@ -23,7 +23,7 @@ where
     &'a T: Hit<f64>,
 {
     if depth == 0 {
-        return Color([0.0, 0.0, 0.0].into());
+        return Color::default();
     }
 
     match world.hit(&ray, 0.0001, INFINITY) {
@@ -31,10 +31,10 @@ where
             Some((scattered, attenuation)) => {
                 attenuation * ray_color(&scattered, &world, depth - 1)
             }
-            None => Color([0.0, 0.0, 0.0].into()),
+            None => Color::default(),
         },
         None => {
-            let t = 0.5 * (ray.direction.unit_vector().y() + 1.0);
+            let t = 0.5 * (ray.direction.unit().y() + 1.0);
             Color([1.0, 1.0, 1.0].into()) * (1.0 - t) + Color([0.5, 0.7, 1.0].into()) * t
         }
     }
