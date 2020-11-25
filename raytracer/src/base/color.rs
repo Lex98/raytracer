@@ -36,7 +36,7 @@ impl<'a, T> RGB for &'a Color<T> {
 }
 
 impl<T: Float + Into<f64>> Color<T> {
-    pub fn as_rgb(&self, samples_per_pixel: i32) -> Rgb<u8> {
+    pub fn as_rgb(&self, samples_per_pixel: u32) -> Rgb<u8> {
         let scale = 1.0 / samples_per_pixel as f64;
         let r = (scale * (*self.r()).into()).sqrt();
         let g = (scale * (*self.g()).into()).sqrt();

@@ -1,4 +1,4 @@
-use core::f64::INFINITY;
+use std::ops::{Mul, Add};
 
 use crate::base::color::Color;
 use crate::base::point3::Point3;
@@ -12,8 +12,10 @@ pub struct Ray<T> {
     pub origin: Point3<T>,
     pub direction: Vec3<T>,
 }
-impl Ray<f64> {
-    pub fn at(&self, t: f64) -> Point3<f64> {
+impl<T> Ray<T>
+where T: Mul<T, Output = T> + Add<T, Output = T> + Copy
+{
+    pub fn at(&self, t: T) -> Point3<T> {
         &self.origin + &(&self.direction * t)
     }
 }
@@ -26,7 +28,7 @@ where
         return Color::default();
     }
 
-    match world.hit(&ray, 0.0001, INFINITY) {
+    match world.hit(&ray, 0.0001, f64::INFINITY) {
         Some(rec) => match rec.material.scatter(ray, &rec) {
             Some((scattered, attenuation)) => {
                 attenuation * ray_color(&scattered, &world, depth - 1)

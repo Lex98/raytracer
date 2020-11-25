@@ -65,20 +65,21 @@ impl Hit<f64> for &Sphere<f64> {
         let a = ray.direction.length_squared();
         let half_b = oc.dot(&ray.direction);
         let c = oc.length_squared() - self.radius.powi(2);
-        let discriminant = half_b.powi(2) - a * c;
+        // let discriminant = half_b.powi(2) - a * c;
+        let discriminant = a.mul_add(-c, half_b.powi(2));
         if discriminant > 0.0 {
             let root = discriminant.sqrt();
-            let temp = (-half_b - root) / a;
-            let temp = if temp < t_min || temp > t_max {
-                (-half_b + root) / a
-            } else {
-                temp
-            };
+            let mut temp = (-half_b - root) / a;
             if temp < t_min || temp > t_max {
-                return None;
-            }
+                temp = (-half_b + root) / a;
+
+                if temp < t_min || temp > t_max {
+                    return None;
+                }
+            };
+
             let hit_point = ray.at(temp);
-            let outward_normal = (&hit_point.vec_from(&self.center)) / self.radius;
+            let outward_normal = hit_point.vec_from(&self.center) / self.radius;
             return Some(HitRecord::new(
                 hit_point,
                 temp,

@@ -15,9 +15,9 @@ use raytracer_derive::Base3Ops;
 pub struct Vec3<T>(pub Base3<T>);
 
 pub trait Vec3Operations<T> {
-    fn dot<'a, 'b: 'a>(
+    fn dot<'a>(
         &'a self,
-        other: &'b Self,
+        other: &'a Self,
     ) -> <<<<&'a Self as XYZ>::Item as Mul<<&'a Self as XYZ>::Item>>::Output as Add<
         <<&Self as XYZ>::Item as Mul<<&'a Self as XYZ>::Item>>::Output,
     >>::Output as Add<<<&'a Self as XYZ>::Item as Mul>::Output>>::Output
@@ -33,7 +33,7 @@ pub trait Vec3Operations<T> {
         self.x() * other.x() + self.y() * other.y() + self.z() * other.z()
     }
 
-    fn cross<'a, 'b: 'a>(&'a self, other: &'b Self) -> Self
+    fn cross<'a>(&'a self, other: &'a Self) -> Self
     where
         &'a Self: XYZ,
         Self: From<

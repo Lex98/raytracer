@@ -2,7 +2,6 @@ use rand::prelude::*;
 
 use crate::base::color::Color;
 use crate::base::vec3::{Vec3, Vec3Operations};
-use crate::base::XYZ;
 use crate::hittable::HitRecord;
 use crate::ray::Ray;
 

@@ -1,8 +1,7 @@
 use image::RgbImage;
 use indicatif::{ProgressBar, ProgressStyle};
-use num_cpus;
 use rand::prelude::*;
-use rayon::ThreadPoolBuilder;
+use rayon::prelude::*;
 
 use raytracer::*;
 
@@ -12,10 +11,6 @@ fn main() {
     let image_height = (image_width as f64 / aspect_ratio) as u32;
     let samples_per_pixel = 1000;
     let max_depth = 50;
-    let pool = ThreadPoolBuilder::new()
-        .num_threads(num_cpus::get())
-        .build()
-        .unwrap();
 
     let look_from = Point3([13.0, 2.0, -3.0].into());
     let look_at = Point3([0.0, 0.0, 0.0].into());
@@ -36,34 +31,30 @@ fn main() {
         aperture,
         dist_to_focus,
     );
-    let rows = img.rows_mut().collect::<Vec<_>>();
-    let progress_bar = ProgressBar::new(rows.len() as u64);
+    let progress_bar = ProgressBar::new(image_height as u64);
     let pb_style = ProgressStyle::default_bar()
         .template("[{elapsed_precise}] {bar:40.cyan/blue} {pos:>7}/{len:7} ({eta})")
         .progress_chars("##-");
     progress_bar.set_style(pb_style);
-    pool.scope(|scope| {
-        let cam_ref = &cam;
-        let world_ref = &world;
-        let progress_bar_ref = &progress_bar;
-        for (y, chunk) in rows.into_iter().enumerate() {
-            scope.spawn(move |_| {
-                let mut rng = thread_rng();
-                for (x, pixel) in chunk.enumerate() {
-                    let mut color = Color::default();
-                    for _ in 0..samples_per_pixel {
-                        let u = (x as f64 + rng.gen_range(0.0, 1.0)) / image_width as f64;
-                        let v = (y as f64 + rng.gen_range(0.0, 1.0)) / image_height as f64;
 
-                        let ray = cam_ref.get_ray(u, v);
-                        color += &ray_color(&ray, world_ref, max_depth);
-                    }
-                    *pixel = color.as_rgb(samples_per_pixel);
+    img.enumerate_rows_mut().par_bridge().into_par_iter().for_each(
+        |(_, chunk)| {
+            let mut rng = thread_rng();
+            chunk.for_each(
+            |(x, y, pixel)| {
+                let mut color = Color::default();
+                for _ in 0..samples_per_pixel {
+                    let u = (x as f64 + rng.gen_range(0.0, 1.0)) / image_width as f64;
+                    let v = (y as f64 + rng.gen_range(0.0, 1.0)) / image_height as f64;
+
+                    let ray = cam.get_ray(u, v);
+                    color += &ray_color(&ray, &world, max_depth);
                 }
-                progress_bar_ref.inc(1);
+                *pixel = color.as_rgb(samples_per_pixel);
             });
+            progress_bar.inc(1);
         }
-    });
+    );
 
     img.save("image.png").unwrap();
 }
